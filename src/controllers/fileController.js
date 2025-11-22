@@ -42,40 +42,34 @@ const getFiles = async (req, res) => {
   const { folderId, userId, departmentRoutes } = req.query;
 
   try {
-    const orConditions = [];
-
-    // Accès utilisateur direct ou via userIdAcces
-    if (userId) {
-      orConditions.push(
-        { userId: userId },
-        { userIdAcces: { $in: [userId] } }
-      );
-    }
-
-    // Accès par département (string)
-    if (departmentRoutes) {
-      orConditions.push({ departementAcces: { $in: [departmentRoutes] } });
-    }
-
     let query = {};
 
-    if (folderId) {
-      // On veut les fichiers du folder OU ceux partagés avec user/dept
-      query.$or = [
-        { folderId: folderId },  // fichiers du folder courant
-        ...orConditions          // fichiers partagés
-      ];
-    } else {
-      // Pas de folderId : on prend juste les fichiers partagés (ou root si tu veux)
-      if (orConditions.length > 0) {
-        query.$or = orConditions;
+    if (departmentRoutes) {
+      // Mode département
+      if (folderId === departmentRoutes) {
+        query = {
+          $or: [
+            { departementAcces: { $in: [departmentRoutes] } },
+            { folderId: folderId},
+          ],
+        };
       } else {
-        query.folderId = null; // racine
+        query = {
+          $or: [
+            { folderId: folderId },
+          ],
+        };
       }
+    } else if (userId) {
+      // Mode utilisateur
+      query = {
+        $or: [{ userId }, { userIdAcces: { $in: [userId] } }],
+      };
+      if (folderId) query.folderId = folderId;
+      else query.folderId = null;
     }
 
     const files = await FileModel.find(query);
-
     res.status(200).json({
       message: "Fichiers récupérés avec succès",
       allFiles: files,
@@ -221,7 +215,9 @@ const shareFileWithDepartement = async (req, res) => {
   const { id } = req.params;
   const { departementAcces } = req.body; // tableau d'IDs de départements
   if (!departementAcces || !Array.isArray(departementAcces)) {
-    return res.status(400).json({ error: "departementAcces doit être un tableau" });
+    return res
+      .status(400)
+      .json({ error: "departementAcces doit être un tableau" });
   }
   try {
     const updated = await FileModel.findOneAndUpdate(
@@ -269,9 +265,9 @@ const getFilesSharedWithMe = async (req, res) => {
   try {
     const files = await FileModel.find({
       $or: [
-        { userIdAcces: { $in: [userId] } },    
-        { departementAcces: { $in: [departement] } }, 
-      ]
+        { userIdAcces: { $in: [userId] } },
+        { departementAcces: { $in: [departement] } },
+      ],
     });
 
     res.status(200).json({

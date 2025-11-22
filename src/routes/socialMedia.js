@@ -5,6 +5,7 @@ const authMiddleware = require('../middlewares/auth');
 
 router.get('/posts', socialController.getPosts);
 router.post('/posts', authMiddleware, socialController.createPost);
+router.put('/posts/:postId', authMiddleware, socialController.updatePost);
 router.post('/posts/:postId/reaction', authMiddleware, socialController.addReaction);
 router.post('/posts/:postId/comment', authMiddleware, socialController.addComment);
 router.post('/posts/:postId/comment/:commentId/reaction', authMiddleware, socialController.addCommentReaction);

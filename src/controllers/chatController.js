@@ -138,10 +138,6 @@ const updateConversationUser = async (req, res) => {
 
     if (updated.modifiedCount > 0) {
       res.status(200).json({ message: "Statut de lecture mis à jour" });
-    } else {
-      res
-        .status(404)
-        .json({ message: "Conversation ou utilisateur non trouvé" });
     }
   } catch (error) {
     console.error("Erreur serveur :", error);

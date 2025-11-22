@@ -3,7 +3,7 @@ const router = express.Router();
 const { inscriptions, allUsers, log, userByIds, updateWithoutPassword, updateWithPassword, deleteUser } = require("../controllers/userControler");
 
 // CREATE : Inscription
-router.post("/setUser", inscriptions);
+router.post("/addUser", inscriptions);
 // READ : Tous les utilisateurs
 router.get("/allUser", allUsers);
 // LOGIN

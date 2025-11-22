@@ -1,46 +1,6 @@
 const SocialPost = require('../../models/mongo/socialPost');
 
-// const { syncUserToMongo } = require('../../utils/userSync');
-
-// exports.createPost = async (req, res) => {
-//   console.log('POST /social/posts');
-//   console.log('req.body:', req.body);
-//   console.log('req.files:', req.files);
-//   try {
-//     const { content, isArticle, articleTitle, links = [] } = req.body;
-//     const { userId } = req.user; // <-- Prend userId du token
-
-//     // Convertir les liens en tableau si c'est une string
-//     const linksArray = typeof links === 'string' ? [links] : links;
-
-//     const post = new SocialPost({
-//       content,
-//       idUser: String(userId), // <-- Utilise userId ici
-//       isArticle: !!isArticle,
-//       ...(isArticle && { articleTitle }),
-//       files: req.files?.map(file => ({
-//         url: `/social/${file.filename}`,
-//         type: file.mimetype.split('/')[0] === 'image' ? 'image' : 
-//               file.mimetype.split('/')[0] === 'video' ? 'video' : 'file'
-//       })) || [],
-//       links: linksArray.filter(Boolean).map(url => ({ url })),
-//       reactions: [], // <-- AJOUTE CETTE LIGNE
-//       comments: []   // <-- AJOUTE CETTE LIGNE
-//     });
-
-//     await post.save();
-//     res.status(201).json(post);
-//   } catch (error) {
-//     res.status(500).json({ 
-//       error: 'Erreur création post',
-//       details: error.message 
-//     });
-//   }
-// };
-
 exports.createPost = async (req, res) => {
-  console.log('POST /social/posts');
-  console.log('req.body:', req.body);
   
   try {
     const { content, isArticle, articleTitle,urlFile, links = [] , idUser} = req.body;
@@ -140,7 +100,6 @@ exports.addReaction = async (req, res) => {
 exports.addComment = async (req, res) => {
   const { postId } = req.params;
   const { content , userId } = req.body; 
-  console.log(userId)
   const post = await SocialPost.findById(postId);
   post.comments.push({ userId, content });
   await post.save();

@@ -6,7 +6,6 @@ const { supabase } = require("../middlewares/supabase");
 // Créer un nouveau dossier
 const createFolder = async (req, res) => {
   const { id, name, parentFolderId, userId, userIdAcces = [] } = req.body;
-  console.log(id, name, parentFolderId, userId, userIdAcces);
   let parentFolder = parentFolderId ?? null;
 
   if (!id || !name || !userId) {
@@ -35,7 +34,6 @@ const createFolder = async (req, res) => {
 
 const updateFolder = async (req, res) => {
   const { id, newFolderName } = req.body;
-  console.log(req.body);
   if (!newFolderName)
     return res.status(400).json({ error: "Le nouveau nom est requis" });
 
@@ -56,41 +54,36 @@ const updateFolder = async (req, res) => {
 };
 const getFolders = async (req, res) => {
   const { parentFolderId, userId, departmentRoutes } = req.query;
+
   try {
-    const orConditions = [];
-
-    // Accès utilisateur direct ou via userIdAcces
-    if (userId) {
-      orConditions.push(
-        { userId: userId },
-        { userIdAcces: { $in: [userId] } }
-      );
-    }
-
-    // Accès par département
-    if (departmentRoutes) {
-      orConditions.push({ departementAcces: { $in: [departmentRoutes] } });
-    }
-
     let query = {};
 
-    if (parentFolderId) {
-      // Dossiers du parent OU partagés
-      query.$or = [
-        { parentFolderId: parentFolderId }, // dossiers sous ce parent
-        ...orConditions                      // dossiers partagés
-      ];
-    } else {
-      // Pas de parent : racine
-      if (orConditions.length > 0) {
-        query.$or = orConditions;
+    if (departmentRoutes) {
+      // Mode département
+      if (parentFolderId === departmentRoutes) {
+        query = {
+          $or: [
+            { departementAcces: { $in: [departmentRoutes] } },
+            { parentFolderId: parentFolderId || null },
+          ],
+        };
       } else {
-        query.parentFolderId = null; // racine
+        query = {
+          $or: [
+            { parentFolderId: parentFolderId || null },
+          ],
+        };
       }
+    } else if (userId) {
+      // Mode utilisateur
+      query = {
+        $or: [{ userId }, { userIdAcces: { $in: [userId] } }],
+      };
+      if (parentFolderId) query.parentFolderId = parentFolderId;
+      else query.parentFolderId = null; // Racine
     }
 
     const folders = await folderModel.find(query);
-
     res.status(200).json({
       message: "Dossiers récupérés avec succès",
       data: folders,
@@ -222,8 +215,14 @@ const shareFolder = async (req, res) => {
 const shareFolderWithDepartement = async (req, res) => {
   const { id } = req.params;
   const { departementAcces } = req.body; // tableau de noms ou d'IDs de département
-  if (!departementAcces || !Array.isArray(departementAcces) || departementAcces.length === 0) {
-    return res.status(400).json({ error: "departementAcces doit être un tableau non vide" });
+  if (
+    !departementAcces ||
+    !Array.isArray(departementAcces) ||
+    departementAcces.length === 0
+  ) {
+    return res
+      .status(400)
+      .json({ error: "departementAcces doit être un tableau non vide" });
   }
   try {
     // Met à jour le dossier racine
@@ -290,18 +289,18 @@ const getFoldersSharedWithMe = async (req, res) => {
         {
           $or: [
             { userIdAcces: { $in: [userId] } },
-            { departementAcces: { $in: [departement] } }
-          ]
+            { departementAcces: { $in: [departement] } },
+          ],
         },
         {
           $or: [
             { parentFolderId: null },
             { parentFolderId: "" },
             { parentFolderId: "/" },
-            { parentFolderId: { $exists: false } }
-          ]
-        }
-      ]
+            { parentFolderId: { $exists: false } },
+          ],
+        },
+      ],
     });
 
     res.status(200).json({

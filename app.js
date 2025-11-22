@@ -13,7 +13,6 @@ const folder = require("./src/routes/folder.js");
 const chat = require("./src/routes/chat.js");
 const connectMongo = require("./src/db/db.js");
 
-
 connectMongo();
 const port = process.env.PORT || 3001
 // pour le socket.io
@@ -28,8 +27,8 @@ const io = new Server(server, {
 // le cors
 app.use(
   cors({
-    // origin: "http://localhost:5173",
-    origin: "https://intranet.promabio.com",
+    origin: "http://localhost:5173",
+    // origin: "https://intranet.promabio.com",
     credentials: true,
   })
 );

@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema(
     },
     pseudo: {
       type: String,
-      default: null,
+      default: '',
     },
     password: {
       type: String,
@@ -28,7 +28,7 @@ const userSchema = new mongoose.Schema(
       default: false, // Utilisateur actif par défaut
     },
     roleUser: {
-      type: String,
+      type: [String],
       required: true,
     },
     responsibilities: {

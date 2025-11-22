@@ -5,8 +5,16 @@ const jwt = require("jsonwebtoken");
 // Inscription d'un nouvel utilisateur
 const inscriptions = async (req, res) => {
   try {
-    const { surname, userName, email, roleUser, password } = req.body;
-
+    const {
+      surname,
+      userName,
+      email,
+      roleUser,
+      pseudo,
+      responsibilities,
+      password,
+      idUser,
+    } = req.body;
     // Vérifier si email existe déjà
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -19,10 +27,13 @@ const inscriptions = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = new User({
+      idUser,
       surname,
       userName,
       email,
       roleUser,
+      pseudo,
+      responsibilities,
       password: hashedPassword,
     });
 
@@ -54,9 +65,12 @@ const allUsers = async (req, res) => {
 // Connexion / login
 const log = async (req, res) => {
   try {
-    const { userName, password } = req.body;
+    const { identifiant, password } = req.body;
 
-    const user = await User.findOne({ userName });
+    const user = await User.findOne({
+      $or: [{ userName: identifiant }, { email: identifiant }],
+    });
+
     if (!user) {
       return res.status(404).json({ message: "Compte non disponible." });
     }
@@ -101,7 +115,7 @@ const log = async (req, res) => {
 // Récupérer un utilisateur par son id
 const userByIds = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select("-password");
+    const user = await User.findOne({ idUser: req.params.id });
     if (!user) {
       return res
         .status(404)
@@ -116,11 +130,31 @@ const userByIds = async (req, res) => {
 // Mise à jour utilisateur sans modifier le mot de passe
 const updateUser = async (req, res) => {
   const { id } = req.params;
-  const { userName, surname, email, roleUser, statusUser, pseudo , avatar, responsibilities} = req.body;
+  const {
+    userName,
+    surname,
+    email,
+    roleUser,
+    statusUser,
+    pseudo,
+    avatar,
+    responsibilities,
+  } = req.body;
   try {
     const updatedUser = await User.updateOne(
       { idUser: id },
-      { $set: { userName, surname, email, roleUser, statusUser, pseudo , avatar, responsibilities} }
+      {
+        $set: {
+          userName,
+          surname,
+          email,
+          roleUser,
+          statusUser,
+          pseudo,
+          avatar,
+          responsibilities,
+        },
+      }
     );
 
     if (!updatedUser) {
@@ -137,19 +171,21 @@ const updateUser = async (req, res) => {
 // Mise à jour du mot de passe uniquement
 const updatePassword = async (req, res) => {
   try {
-    const { oldPass, newPass } = req.body;
-    const user = await User.findById(req.params.id);
+    const { oldPassword, newPassword } = req.body;
+    const { id } = req.params;
+
+    const user = await User.findOne({ idUser: id });
 
     if (!user) {
       return res.status(404).json({ message: "L'utilisateur n'existe pas" });
     }
 
-    const isOk = await bcrypt.compare(oldPass, user.password);
+    const isOk = await bcrypt.compare(oldPassword, user.password);
     if (!isOk) {
       return res.status(401).json({ message: "Ancien mot de passe incorrect" });
     }
 
-    const hashNewPass = await bcrypt.hash(newPass, 10);
+    const hashNewPass = await bcrypt.hash(newPassword, 10);
     user.password = hashNewPass;
     await user.save();
 
@@ -161,21 +197,22 @@ const updatePassword = async (req, res) => {
 
 // Suppression d'un utilisateur
 const deleteUser = async (req, res) => {
+  const { id } = req.params;
   try {
-    const deletedUser = await User.findByIdAndDelete(req.params.id);
+    const deletedUser = await User.deleteOne({ idUser: id });
 
     if (!deletedUser) {
       return res
         .status(404)
         .json({ message: "Utilisateur introuvable pour suppression." });
     }
-
     res.status(200).json({
-      message: `${deletedUser.userName} a bien été supprimé.`,
+      message: `${deletedUser || "L'utilisateur"} a bien été supprimé.`,
       data: deletedUser,
     });
   } catch (err) {
-    res.status(500).json({ message: "Erreur serveur", error: err });
+    console.error("Erreur lors de la suppression :", err);
+    res.status(500).json({ message: "Erreur serveur", error: err.message });
   }
 };
 
@@ -188,13 +225,3 @@ module.exports = {
   updateWithPassword: updatePassword,
   deleteUser,
 };
-
-// module.exports = {
-//   inscriptions,
-//   allUsers,
-//   log,
-//   userByIds,
-//   updateWithoutPassword,
-//   updateWithPassword,
-//   deleteUser,
-// };
