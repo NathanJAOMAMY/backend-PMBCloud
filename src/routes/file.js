@@ -25,10 +25,8 @@ router.post("/share-departement/:id", shareFileWithDepartement);
 router.get("/", getFiles);
 router.get("/shared", getSharedFiles);
 router.get("/shared-with-me", getFilesSharedWithMe);
-router.get("/:id", getFileById);
-router.delete("/:id", deleteFile);
 router.get("/read/:foldername/:filename", (req, res) => {
-
+  
   if (fs.existsSync(filePath)) {
     const mimeType = mime.getType(filePath);
     res.setHeader("Content-Type", mimeType);
@@ -38,6 +36,8 @@ router.get("/read/:foldername/:filename", (req, res) => {
     res.status(404).send("Fichier non trouvé.");
   }
 });
+router.get("/:id", getFileById);
+router.delete("/:id", deleteFile);
 
 router.put("/update", updateFile);
 module.exports = router;
