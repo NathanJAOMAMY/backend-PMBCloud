@@ -31,7 +31,7 @@ jobs:
       - name: Build and Scan
         run: |
           docker build -t backend-scan .
-          docker scan backend-scan --file Dockerfile --severity high
+          docker scan backend-scan --severity high
   
   # 4. TEST DE SÉCURITÉ API (Spécifique backend)
   api-security:

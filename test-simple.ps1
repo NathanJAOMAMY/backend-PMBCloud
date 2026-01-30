@@ -4,9 +4,9 @@
 Write-Host "`n1. Serveur en ligne ?" -ForegroundColor Yellow
 try {
     $resp = Invoke-WebRequest -Uri "http://localhost:3001/health" -UseBasicParsing
-    Write-Host "   ✅ OUI - Status: $($resp.StatusCode)" -ForegroundColor Green
+    Write-Host "   OUI - Status: $($resp.StatusCode)" -ForegroundColor Green
 } catch {
-    Write-Host "   ❌ NON - Serveur éteint" -ForegroundColor Red
+    Write-Host "    NON - Serveur éteint" -ForegroundColor Red
     exit
 }
 
