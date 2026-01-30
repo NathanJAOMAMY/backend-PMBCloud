@@ -32,9 +32,8 @@ RUN mkdir -p src/uploads && \
     chmod -R 750 src/uploads
 
 # Sécurité: Supprimer les fichiers sensibles potentiels
-RUN  rm -rf .git && \
-    find . -name "*.md" -delete 2>/dev/null || true && \
-    npm cache clean --force
+RUN  rm -rf .git .github .vscode .idea 2>/dev/null || true && \
+    npm cache clean --force 2>/dev/null || true
 
 # Utiliser l'utilisateur non-root
 USER nodeuser

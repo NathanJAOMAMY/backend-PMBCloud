@@ -2,6 +2,16 @@ version: '3.8'
 
 services:
 
+  mongodb:
+    image: mongo:6
+    container_name: pmbcloud-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - pmbcloud-shared-network
+    restart: unless-stopped
   backend:
     build: 
       context: .
@@ -17,7 +27,7 @@ services:
       - PORT=3001
       - MONGO_URI=${MONGO_URI}
       - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGIN=http://localhost:8080,http://frontend:8080
+      - CORS_ORIGIN=http://localhost:5173,http://frontend:5173
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
     restart: unless-stopped
