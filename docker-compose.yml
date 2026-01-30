@@ -10,8 +10,8 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
+      - ./src/uploads:/app/src/uploads
+
     environment:
       - NODE_ENV=production
       - PORT=3001

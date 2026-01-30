@@ -1,0 +1,16 @@
+title = "PMBCloud Backend Security"
+
+[[rules]]
+id = "supabase-key"
+description = "Supabase API Key"
+regex = '''SUPABASE_KEY=['\"]?[a-zA-Z0-9\.\-_]{40,}['\"]?'''
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret"
+regex = '''JWT_SECRET=['\"]?[a-zA-Z0-9\.\-_]{20,}['\"]?'''
+
+[[rules]]
+id = "mongo-uri"
+description = "MongoDB URI with password"
+regex = '''mongodb(\+srv)?:\/\/[^:]+:[^@]+@'''

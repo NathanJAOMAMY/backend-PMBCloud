@@ -6,7 +6,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon app.js",
-    "start": "node app.js"
+    "start": "node app.js",
+    "audit": "npm audit --audit-level=high",
+    "docker-build": "docker build -t pmbcloud-backend .",
+    "docker-run": "docker run -p 3001:3001 --env-file .env pmbcloud-backend",
+    "security-check": "npm run audit && npx helmet-check"
   },
   "author": "",
   "license": "ISC",
@@ -17,6 +21,8 @@
     "cors": "^2.8.5",
     "dotenv": "^17.1.0",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mime": "^2.6.0",
     "mongoose": "^5.13.22",

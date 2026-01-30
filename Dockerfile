@@ -27,9 +27,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --chown=nodeuser:nodegroup . .
 
 # Créer le dossier des logs avec bonnes permissions
-RUN mkdir -p logs uploads && \
-    chown -R nodeuser:nodegroup logs uploads && \
-    chmod -R 750 logs uploads
+RUN mkdir -p src/uploads && \
+    chown -R nodeuser:nodegroup src/uploads && \
+    chmod -R 750 src/uploads
 
 # Sécurité: Supprimer les fichiers sensibles potentiels
 RUN  rm -rf .git && \

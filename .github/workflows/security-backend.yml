@@ -1,0 +1,49 @@
+name: Backend Security
+on: [push, pull_request]
+
+jobs:
+  # 1. SCAN DES SECRETS (CRITIQUE - Backend a .env, JWT, MongoDB)
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_CONFIG: .gitleaks-backend.toml
+  
+  # 2. SCAN DE DÉPENDANCES (Node.js + MongoDB driver)
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: NPM Audit
+        run: npm audit --audit-level=critical
+      - name: Snyk Scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+  
+  # 3. SCAN DOCKER (Image backend)
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and Scan
+        run: |
+          docker build -t backend-scan .
+          docker scan backend-scan --file Dockerfile --severity high
+  
+  # 4. TEST DE SÉCURITÉ API (Spécifique backend)
+  api-security:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:6
+        ports:
+          - 27017:27017
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run security tests
+        run: |
+          npm test -- --grep "security"
+          # Tests: JWT validation, rate limiting, SQL/NoSQL injection prevention 
