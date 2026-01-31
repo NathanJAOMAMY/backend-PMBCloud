@@ -54,7 +54,17 @@ jobs:
       run: docker build -t pmbcloud-backend .
     - name: Test heatlh endpoint
       run: |
-        docker run -d -p 3001:3001 --name pmbcloud-backend-test pmbcloud-backend
+        docker run -d \
+          -p 3001:3001 \
+          --name pmbcloud-backend-test \
+          -e NODE_ENV=production \
+          -e PORT=3001 \
+          -e SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+          -e SUPABASE_KEY=${{ secrets.SUPABASE_KEY }} \
+          -e MONGO_URI=${{ secrets.MONGO_URI }} \
+          -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+          pmbcloud-backend
+
         sleep 10
         RESPONSE=$(curl --write-out "%{http_code}" --silent --output /dev/null http://localhost:3001/health)
         if [ "$RESPONSE" -ne 200 ]; then
