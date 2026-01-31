@@ -6,11 +6,14 @@
   "scripts": {
     "test": "jest",
     "test:security": "jest --testPathPattern=security",
+    "test:coverage": "jest --coverage",
     "dev": "nodemon app.js",
     "start": "node app.js",
+    "lint": "eslint .",
     "audit": "npm audit --audit-level=high",
     "docker-build": "docker build -t pmbcloud-backend .",
     "docker-run": "docker run -p 3001:3001 --env-file .env pmbcloud-backend",
+    "docker:scan": "docker scan pmbcloud-backend --file Dockerfile --severity high",
     "security-check": "npm run audit && npx helmet-check"
   },
   "author": "",
