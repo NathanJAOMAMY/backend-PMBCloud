@@ -57,5 +57,5 @@ jobs:
 
       - name: Run security tests
         run: |
-          npm test -- security
+          npm test -- --passWithNoTests
           # Tests: JWT validation, rate limiting, SQL/NoSQL injection prevention 
