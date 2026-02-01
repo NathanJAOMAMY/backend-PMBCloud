@@ -26,10 +26,10 @@ RUN addgroup -g 1001 -S nodegroup && \
 COPY --from=deps /app/node_modules ./node_modules
 COPY --chown=nodeuser:nodegroup . .
 
-# Créer le dossier des logs avec bonnes permissions
-RUN mkdir -p src/uploads && \
-    chown -R nodeuser:nodegroup src/uploads && \
-    chmod -R 750 src/uploads
+# Créer les dossiers nécessaires avec droits nodeuser
+RUN mkdir -p logs src/uploads && \
+    chown -R nodeuser:nodegroup logs src/uploads && \
+    chmod -R 750 logs src/uploads
 
 # Sécurité: Supprimer les fichiers sensibles potentiels
 RUN  rm -rf .git .github .vscode .idea 2>/dev/null || true && \
