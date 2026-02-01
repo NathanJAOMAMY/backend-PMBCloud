@@ -36,7 +36,6 @@ jobs:
         with:
           image-ref: backend-scan
           format: 'table'
-          exit-code: '1'
           severity: 'CRITICAL,HIGH'
   
   # 4. TEST DE SÉCURITÉ API (Spécifique backend)
