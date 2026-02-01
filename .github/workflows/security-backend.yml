@@ -54,8 +54,8 @@ jobs:
           node-version: '18.x'
       - name: Install dependencies
         run: npm ci
-        
+
       - name: Run security tests
         run: |
-          npm test -- --grep "security"
+          npm test -- security
           # Tests: JWT validation, rate limiting, SQL/NoSQL injection prevention 
