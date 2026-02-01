@@ -25,7 +25,7 @@ const server = http.createServer(app);
 
 const logDir = path.join(__dirname, 'logs');
 if (!fs.existsSync(logDir)) {
-  fs.mkdirSync(logDir);
+  fs.mkdirSync(logDir, { recursive: true });
 }
 
 const logSecurityEvent = (event, ip, details = '') => {

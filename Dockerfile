@@ -4,7 +4,7 @@
 # =============================================
 
 # Stage 1: Dépendances
-FROM node:18-alpine AS deps
+FROM node:20-alpine AS deps
 WORKDIR /app
 
 # Copier les fichiers de dépendances
@@ -12,7 +12,7 @@ COPY package*.json ./
 RUN npm ci --only=production --silent --no-audit --no-fund
 
 # Stage 2: Production
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 WORKDIR /app
 
 # Installer curl pour health check
