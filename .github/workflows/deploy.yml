@@ -1,0 +1,139 @@
+
+name: Deploy Backend
+
+on:
+  workflow_run:
+    workflows: ["Node.js CI"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy (Render) — only after CI success
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') || github.event_name == 'workflow_dispatch' }}
+    env:
+      RENDER_SERVICE_ID: ${{ secrets.RENDER_BACKEND_SERVICE_ID }}
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      HEALTHCHECK_URL: ${{ secrets.RENDER_HEALTHCHECK_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Render credentials
+        run: |
+          if [ -z "$RENDER_SERVICE_ID" ]; then
+            echo " Missing RENDER_BACKEND_SERVICE_ID secret"
+            exit 1
+          fi
+          if [ -z "$RENDER_API_KEY" ]; then
+            echo " Missing RENDER_API_KEY secret"
+            exit 1
+          fi
+          echo "✓ Render credentials configured"
+
+      - name: Trigger deploy via Render API
+        id: trigger
+        run: |
+          echo "Triggering deployment on Render for service $RENDER_SERVICE_ID..."
+          RESPONSE=$(curl -s -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "response=$RESPONSE" >> $GITHUB_STEP_SUMMARY
+          DEPLOY_ID=$(echo "$RESPONSE" | jq -r '.id // .deploy.id // empty')
+          if [ -z "$DEPLOY_ID" ]; then
+            echo " Failed to trigger deployment. Response:\n$RESPONSE"
+            exit 1
+          fi
+          echo "DEPLOY_ID=$DEPLOY_ID" >> $GITHUB_ENV
+          echo "Triggered deploy id: $DEPLOY_ID"
+
+      - name: Wait for deploy to finish
+        id: wait_deploy
+        run: |
+          # DEPLOY_ID is set in the previous step by writing to $GITHUB_ENV
+          # It is available here as a normal environment variable $DEPLOY_ID
+          DEPLOY_ID="$DEPLOY_ID"
+          TIMEOUT=900
+          INTERVAL=10
+          ELAPSED=0
+          echo "Waiting for deploy $DEPLOY_ID to finish (timeout ${TIMEOUT}s)"
+          while [ $ELAPSED -lt $TIMEOUT ]; do
+            DJSON=$(curl -s "https://api.render.com/v1/deploys/$DEPLOY_ID" -H "Authorization: Bearer $RENDER_API_KEY")
+            STATUS=$(echo "$DJSON" | jq -r '.status // empty')
+            echo "Deploy status: $STATUS"
+            if [ "$STATUS" = "succeeded" ]; then
+              DEPLOY_STATUS=succeeded
+              echo "deploy_status=$DEPLOY_STATUS" >> $GITHUB_OUTPUT
+              break
+            fi
+            if [ "$STATUS" = "failed" ]; then
+              DEPLOY_STATUS=failed
+              echo "deploy_status=$DEPLOY_STATUS" >> $GITHUB_OUTPUT
+              break
+            fi
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          if [ -z "${DEPLOY_STATUS:-}" ]; then
+            DEPLOY_STATUS=timeout
+            echo "deploy_status=$DEPLOY_STATUS" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Health check (optional)
+        id: healthcheck
+        run: |
+          if [ -z "$HEALTHCHECK_URL" ]; then
+            echo "No HEALTHCHECK_URL set; skipping HTTP health check"
+            echo "health_ok=skipped" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "Checking health endpoint: $HEALTHCHECK_URL"
+          OK=0
+          for i in 1 2 3 4 5; do
+            if curl -sSf -m 10 "$HEALTHCHECK_URL" >/dev/null 2>&1; then
+              OK=1
+              break
+            fi
+            echo "Health check attempt $i failed, retrying..."
+            sleep 10
+          done
+          if [ $OK -eq 1 ]; then
+            echo "health_ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "health_ok=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Rollback on failure
+        if: ${{ steps.wait_deploy.outputs.deploy_status != 'succeeded' || steps.healthcheck.outputs.health_ok == 'false' }}
+        run: |
+          echo "Deployment failed or healthcheck failed — attempting rollback"
+          PREV_ID=$(curl -s "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys?limit=10" -H "Authorization: Bearer $RENDER_API_KEY" | jq -r --arg CUR "$DEPLOY_ID" '.[] | select(.id != $CUR and .status=="succeeded") | .id' | head -n1)
+          if [ -z "$PREV_ID" ]; then
+            echo "No previous successful deploy found; cannot rollback automatically"
+            exit 1
+          fi
+          echo "Found previous successful deploy id: $PREV_ID — triggering rollback deploy"
+          RB_RESP=$(curl -s -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"previous_deploy_id":"'$PREV_ID'"}')
+          echo "Rollback response: $RB_RESP"
+          RB_ID=$(echo "$RB_RESP" | jq -r '.id // .deploy.id // empty')
+          if [ -z "$RB_ID" ]; then
+            echo "Rollback trigger failed; manual intervention required"
+            exit 1
+          fi
+          echo "Rollback deploy triggered: $RB_ID"
+
+      - name: Post-deploy summary
+        if: ${{ steps.wait_deploy.outputs.deploy_status == 'succeeded' && steps.healthcheck.outputs.health_ok != 'false' }}
+        run: |
+          echo " Deployment completed and health check OK"
+          echo "Service: https://dashboard.render.com/services/$RENDER_SERVICE_ID"
+
+      - name: Post-deploy failure summary
+        if: ${{ steps.wait_deploy.outputs.deploy_status != 'succeeded' || steps.healthcheck.outputs.health_ok == 'false' }}
+        run: |
+          echo " Deployment failed or healthcheck failed. Check Render dashboard and logs."
+          exit 1
