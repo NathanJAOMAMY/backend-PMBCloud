@@ -51,33 +51,98 @@ jobs:
       - name: Wait for deploy to finish
         id: wait_deploy
         run: |
-          # DEPLOY_ID is set in the previous step by writing to $GITHUB_ENV
-          # It is available here as a normal environment variable $DEPLOY_ID
           DEPLOY_ID="$DEPLOY_ID"
-          TIMEOUT=900
-          INTERVAL=10
+          TIMEOUT=300
+          INTERVAL=15
           ELAPSED=0
-          echo "Waiting for deploy $DEPLOY_ID to finish (timeout ${TIMEOUT}s)"
+          
+          echo " Surveillance du déploiement $DEPLOY_ID"
+          
           while [ $ELAPSED -lt $TIMEOUT ]; do
-            DJSON=$(curl -s "https://api.render.com/v1/deploys/$DEPLOY_ID" -H "Authorization: Bearer $RENDER_API_KEY")
-            STATUS=$(echo "$DJSON" | jq -r '.status // empty')
-            echo "Deploy status: $STATUS"
-            if [ "$STATUS" = "succeeded" ]; then
-              DEPLOY_STATUS=succeeded
-              echo "deploy_status=$DEPLOY_STATUS" >> $GITHUB_OUTPUT
-              break
+            # ESSAYER DEUX FORMATS D'API DIFFÉRENTS
+            
+            # Format 1: L'API standard
+            RESPONSE1=$(curl -s -w "\n%{http_code}" \
+              "https://api.render.com/v1/deploys/$DEPLOY_ID" \
+              -H "Authorization: Bearer $RENDER_API_KEY" \
+              -H "Accept: application/json")
+            
+            # Format 2: Via le service (peut-être le bon format)
+            RESPONSE2=$(curl -s -w "\n%{http_code}" \
+              "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys/$DEPLOY_ID" \
+              -H "Authorization: Bearer $RENDER_API_KEY" \
+              -H "Accept: application/json")
+            
+            HTTP_CODE1=$(echo "$RESPONSE1" | tail -n1)
+            BODY1=$(echo "$RESPONSE1" | sed '$d')
+            
+            HTTP_CODE2=$(echo "$RESPONSE2" | tail -n1)
+            BODY2=$(echo "$RESPONSE2" | sed '$d')
+            
+            # Essayer de parser la première réponse
+            if [ "$HTTP_CODE1" = "200" ]; then
+              if echo "$BODY1" | jq -e . >/dev/null 2>&1; then
+                STATUS=$(echo "$BODY1" | jq -r '.status // .deploy.status // empty')
+                echo " Format API 1: Status=$STATUS"
+              else
+                echo "  API 1: Réponse non-JSON"
+              fi
             fi
-            if [ "$STATUS" = "failed" ]; then
-              DEPLOY_STATUS=failed
-              echo "deploy_status=$DEPLOY_STATUS" >> $GITHUB_OUTPUT
-              break
+            
+            # Essayer la deuxième réponse
+            if [ -z "${STATUS:-}" ] && [ "$HTTP_CODE2" = "200" ]; then
+              if echo "$BODY2" | jq -e . >/dev/null 2>&1; then
+                STATUS=$(echo "$BODY2" | jq -r '.status // .deploy.status // empty')
+                echo " Format API 2: Status=$STATUS"
+              else
+                echo "  API 2: Réponse non-JSON"
+              fi
             fi
+            
+            # Si toujours pas de status, essayer un parsing manuel
+            if [ -z "${STATUS:-}" ]; then
+              echo " Tentative de parsing manuel..."
+              
+              # Chercher le statut dans le HTML/texte
+              ALL_RESPONSES="$BODY1$BODY2"
+              STATUS=$(echo "$ALL_RESPONSES" | grep -o '"status":"[^"]*"' | cut -d'"' -f4 | head -1)
+              
+              if [ -z "$STATUS" ]; then
+                STATUS=$(echo "$ALL_RESPONSES" | grep -o "'status':'[^']*'" | cut -d"'" -f4 | head -1)
+              fi
+              
+              if [ -z "$STATUS" ]; then
+                STATUS=$(echo "$ALL_RESPONSES" | grep -o '"state":"[^"]*"' | cut -d'"' -f4 | head -1)
+              fi
+            fi
+            
+            echo " Status détecté: ${STATUS:-non détecté}"
+            
+            # Logique de décision
+            case "${STATUS:-}" in
+              "succeeded"|"live"|"SUCCEEDED")
+                echo " Déploiement réussi!"
+                echo "deploy_status=succeeded" >> $GITHUB_OUTPUT
+                break
+                ;;
+              "failed"|"FAILED"|"build_failed"|"canceled")
+                echo " Déploiement échoué: $STATUS"
+                echo "deploy_status=failed" >> $GITHUB_OUTPUT
+                break
+                ;;
+              *)
+                # Statuts en cours: building, pending, updating, etc.
+                ;;
+            esac
+            
             sleep $INTERVAL
             ELAPSED=$((ELAPSED + INTERVAL))
+            echo "  Écoulé: ${ELAPSED}s / ${TIMEOUT}s"
           done
-          if [ -z "${DEPLOY_STATUS:-}" ]; then
-            DEPLOY_STATUS=timeout
-            echo "deploy_status=$DEPLOY_STATUS" >> $GITHUB_OUTPUT
+          
+          if [ $ELAPSED -ge $TIMEOUT ]; then
+            echo " Timeout atteint"
+            echo "deploy_status=timeout" >> $GITHUB_OUTPUT
           fi
 
       - name: Health check (optional)
@@ -137,4 +202,3 @@ jobs:
         run: |
           echo " Deployment failed or healthcheck failed. Check Render dashboard and logs."
           exit 1
-          
