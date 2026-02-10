@@ -132,7 +132,6 @@ jobs:
           echo " Deployment completed and health check OK"
           echo "Service: https://dashboard.render.com/services/$RENDER_BACKEND_SERVICE_ID"
 
-
       - name: Post-deploy failure summary
         if: ${{ steps.wait_deploy.outputs.deploy_status != 'succeeded' || steps.healthcheck.outputs.health_ok == 'false' }}
         run: |
