@@ -35,18 +35,22 @@ jobs:
         id: trigger
         run: |
           echo "Triggering deployment on Render for service $RENDER_BACKEND_SERVICE_ID..."
-          HTTP_CODE=$(curl -w "%{http_code}" -s -X POST "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys" \
+          HTTP_CODE=$(curl -w "\n%{http_code}" -s -X POST "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys" \
             -H "Authorization: Bearer $RENDER_API_KEY" \
             -H "Content-Type: application/json" \
-            -d '{}' -o response.json)
+            -d '{}' | tee response.json | tail -1)
+          
+          # Remove the last line (HTTP code) from response.json to keep only the JSON
+          sed -i '$ d' response.json
+          RESPONSE=$(cat response.json)
           
           echo "HTTP Status Code: $HTTP_CODE"
-          RESPONSE=$(cat response.json)
           echo "API Response: $RESPONSE"
           echo "response=$RESPONSE" >> $GITHUB_STEP_SUMMARY
           
-          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
-            echo " Failed to trigger deployment. HTTP $HTTP_CODE. Response:\n$RESPONSE"
+          # Accept 200, 201, or 202 (Accepted)
+          if ! [[ "$HTTP_CODE" =~ ^(200|201|202)$ ]]; then
+            echo " Failed to trigger deployment. HTTP $HTTP_CODE. Response: $RESPONSE"
             exit 1
           fi
           
