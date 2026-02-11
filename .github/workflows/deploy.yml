@@ -45,8 +45,8 @@ jobs:
           RESPONSE=$(head -n -1 full_response.txt)
           
           echo "HTTP Status Code: $HTTP_CODE"
+          echo "API Response Length: ${#RESPONSE}"
           echo "API Response: $RESPONSE"
-          echo "response=$RESPONSE" >> $GITHUB_STEP_SUMMARY
           
           # Accept 200, 201, or 202 (Accepted)
           if ! [[ "$HTTP_CODE" =~ ^(200|201|202)$ ]]; then
@@ -54,11 +54,21 @@ jobs:
             exit 1
           fi
           
+          # Try to extract DEPLOY_ID from response
           DEPLOY_ID=$(echo "$RESPONSE" | jq -r '.id // .deploy.id // empty' 2>/dev/null)
-          if [ -z "$DEPLOY_ID" ]; then
-            echo " Failed to extract DEPLOY_ID from response: $RESPONSE"
-            exit 1
+          
+          # If response is empty or missing DEPLOY_ID, fetch the most recent deploy
+          if [ -z "$DEPLOY_ID" ] || [ -z "$RESPONSE" ]; then
+            echo " Response was empty or missing ID; fetching most recent deploy..."
+            RECENT_DEPLOYS=$(curl -s "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys?limit=1" \
+              -H "Authorization: Bearer $RENDER_API_KEY")
+            DEPLOY_ID=$(echo "$RECENT_DEPLOYS" | jq -r '.[0].id // empty' 2>/dev/null)
+            if [ -z "$DEPLOY_ID" ]; then
+              echo " Failed to fetch recent deploy ID. Response: $RECENT_DEPLOYS"
+              exit 1
+            fi
           fi
+          
           echo "DEPLOY_ID=$DEPLOY_ID" >> $GITHUB_ENV
           echo "Triggered deploy id: $DEPLOY_ID"
 
