@@ -35,14 +35,24 @@ jobs:
         id: trigger
         run: |
           echo "Triggering deployment on Render for service $RENDER_BACKEND_SERVICE_ID..."
-          RESPONSE=$(curl -s -X POST "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys" \
+          HTTP_CODE=$(curl -w "%{http_code}" -s -X POST "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys" \
             -H "Authorization: Bearer $RENDER_API_KEY" \
             -H "Content-Type: application/json" \
-            -d '{}')
+            -d '{}' -o response.json)
+          
+          echo "HTTP Status Code: $HTTP_CODE"
+          RESPONSE=$(cat response.json)
+          echo "API Response: $RESPONSE"
           echo "response=$RESPONSE" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$HTTP_CODE" != "200" ] && [ "$HTTP_CODE" != "201" ]; then
+            echo " Failed to trigger deployment. HTTP $HTTP_CODE. Response:\n$RESPONSE"
+            exit 1
+          fi
+          
           DEPLOY_ID=$(echo "$RESPONSE" | jq -r '.id // .deploy.id // empty')
           if [ -z "$DEPLOY_ID" ]; then
-            echo " Failed to trigger deployment. Response:\n$RESPONSE"
+            echo " Failed to extract DEPLOY_ID from response: $RESPONSE"
             exit 1
           fi
           echo "DEPLOY_ID=$DEPLOY_ID" >> $GITHUB_ENV
