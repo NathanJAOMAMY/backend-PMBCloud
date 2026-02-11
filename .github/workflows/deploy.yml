@@ -35,14 +35,14 @@ jobs:
         id: trigger
         run: |
           echo "Triggering deployment on Render for service $RENDER_BACKEND_SERVICE_ID..."
-          HTTP_CODE=$(curl -w "\n%{http_code}" -s -X POST "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys" \
+          curl -s -X POST "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys" \
             -H "Authorization: Bearer $RENDER_API_KEY" \
             -H "Content-Type: application/json" \
-            -d '{}' | tee response.json | tail -1)
+            -d '{}' -w "\n%{http_code}" > full_response.txt 2>&1
           
-          # Remove the last line (HTTP code) from response.json to keep only the JSON
-          sed -i '$ d' response.json
-          RESPONSE=$(cat response.json)
+          # Extract HTTP code (last line) and response body (all lines except last)
+          HTTP_CODE=$(tail -1 full_response.txt)
+          RESPONSE=$(head -n -1 full_response.txt)
           
           echo "HTTP Status Code: $HTTP_CODE"
           echo "API Response: $RESPONSE"
@@ -54,7 +54,7 @@ jobs:
             exit 1
           fi
           
-          DEPLOY_ID=$(echo "$RESPONSE" | jq -r '.id // .deploy.id // empty')
+          DEPLOY_ID=$(echo "$RESPONSE" | jq -r '.id // .deploy.id // empty' 2>/dev/null)
           if [ -z "$DEPLOY_ID" ]; then
             echo " Failed to extract DEPLOY_ID from response: $RESPONSE"
             exit 1
