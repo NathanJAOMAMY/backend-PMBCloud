@@ -87,12 +87,12 @@ jobs:
             echo "Raw API response: $DJSON"
             STATUS=$(echo "$DJSON" | jq -r '.deploy.status // .status // empty')
             echo "Deploy status: $STATUS"
-            if [ "$STATUS" = "succeeded" ]; then
+            if [ "$STATUS" = "live" ]; then
               DEPLOY_STATUS=succeeded
               echo "deploy_status=$DEPLOY_STATUS" >> $GITHUB_OUTPUT
               break
             fi
-            if [ "$STATUS" = "failed" ]; then
+            if [ "$STATUS" = "deactivated" ] || [ "$STATUS" = "failed" ]; then
               DEPLOY_STATUS=failed
               echo "deploy_status=$DEPLOY_STATUS" >> $GITHUB_OUTPUT
               break
