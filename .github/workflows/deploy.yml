@@ -84,7 +84,7 @@ jobs:
           echo "Waiting for deploy $DEPLOY_ID to finish (timeout ${TIMEOUT}s)"
           while [ $ELAPSED -lt $TIMEOUT ]; do
             DJSON=$(curl -s "https://api.render.com/v1/deploys/$DEPLOY_ID" -H "Authorization: Bearer $RENDER_API_KEY")
-            STATUS=$(echo "$DJSON" | jq -r '.status // empty')
+            STATUS=$(echo "$DJSON" | jq -r '.deploy.status // empty')
             echo "Deploy status: $STATUS"
             if [ "$STATUS" = "succeeded" ]; then
               DEPLOY_STATUS=succeeded
