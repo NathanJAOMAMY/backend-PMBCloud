@@ -62,7 +62,7 @@ jobs:
             echo " Response was empty or missing ID; fetching most recent deploy..."
             RECENT_DEPLOYS=$(curl -s "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys?limit=1" \
               -H "Authorization: Bearer $RENDER_API_KEY")
-            DEPLOY_ID=$(echo "$RECENT_DEPLOYS" | jq -r '.[0].id // empty' 2>/dev/null)
+            DEPLOY_ID=$(echo "$RECENT_DEPLOYS" | jq -r '.[0].deploy.id // empty' 2>/dev/null)
             if [ -z "$DEPLOY_ID" ]; then
               echo " Failed to fetch recent deploy ID. Response: $RECENT_DEPLOYS"
               exit 1
@@ -132,7 +132,7 @@ jobs:
         if: ${{ steps.wait_deploy.outputs.deploy_status != 'succeeded' || steps.healthcheck.outputs.health_ok == 'false' }}
         run: |
           echo "Deployment failed or healthcheck failed — attempting rollback"
-          PREV_ID=$(curl -s "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys?limit=10" -H "Authorization: Bearer $RENDER_API_KEY" | jq -r --arg CUR "$DEPLOY_ID" '.[] | select(.id != $CUR and .status=="succeeded") | .id' | head -n1)
+          PREV_ID=$(curl -s "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys?limit=10" -H "Authorization: Bearer $RENDER_API_KEY" | jq -r --arg CUR "$DEPLOY_ID" '.[] | select(.deploy.id != $CUR and .deploy.status=="succeeded") | .deploy.id' | head -n1)
           if [ -z "$PREV_ID" ]; then
             echo "No previous successful deploy found; cannot rollback automatically"
             exit 1
