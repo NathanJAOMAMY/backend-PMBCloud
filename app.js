@@ -49,7 +49,8 @@ const logSecurityEvent = (event, ip, details = '') => {
 
 // CORS sécurisé
 const allowedOrigins = [
-  "http://localhost:5173",
+  "https://frontend-pmbcloud.onrender.com",
+  // "http://localhost:5173",
   // "http://localhost:8080",
   // "https://intranet.promabio.com"
 ];
