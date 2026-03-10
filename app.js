@@ -50,9 +50,11 @@ const logSecurityEvent = (event, ip, details = '') => {
 // CORS sécurisé
 const allowedOrigins = [
   "https://frontend-pmbcloud.onrender.com",
-  // "http://localhost:5173",
-  // "http://localhost:8080",
-  // "https://intranet.promabio.com"
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "http://localhost:8080",
+  "https://intranet.promabio.com"
 ];
 
 const io = new Server(server, {
@@ -140,11 +142,16 @@ app.get('/', (req, res) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    service: 'pmbcloud-backend'
-  });
+  try {
+    res.status(200).json({
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      service: 'pmbcloud-backend'
+    });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({ error: 'Health check failed' });
+  }
 });
 
 // Routes
