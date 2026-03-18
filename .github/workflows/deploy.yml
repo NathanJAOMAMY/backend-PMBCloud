@@ -133,29 +133,30 @@ jobs:
         if: ${{ steps.wait_deploy.outputs.deploy_status != 'succeeded' || steps.healthcheck.outputs.health_ok == 'false' }}
         run: |
           echo "Deployment failed or healthcheck failed — attempting rollback"
-          # Récupérer la liste des déploiements
-          DEPLOYS=$(curl -s "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys?limit=10" -H "Authorization: Bearer $RENDER_API_KEY")
-          # Chercher un déploiement réussi différent du courant (gère les deux structures possibles)
+          echo "DEPLOY_ID = $DEPLOY_ID"
+          echo "Récupération de la liste des déploiements..."
+          DEPLOYS=$(curl -s -f "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys?limit=10" -H "Authorization: Bearer $RENDER_API_KEY") || { echo "curl failed"; exit 1; }
+          echo "Réponse API reçue (premiers 200 caractères) : ${DEPLOYS:0:200}"
           PREV_ID=$(echo "$DEPLOYS" | jq -r --arg CUR "$DEPLOY_ID" '
-          .[] | 
-          ( (.deploy.id // .id) as $id | 
-          (.deploy.status // .status) as $status |
-          if $id != $CUR and $status == "live" then $id else empty end
-          )' | head -n1)
+            .[] | 
+            ( (.deploy.id // .id) as $id | 
+              (.deploy.status // .status) as $status |
+              if $id != $CUR and $status == "live" then $id else empty end
+            )' | head -n1)
           if [ -z "$PREV_ID" ]; then
-          echo "No previous successful deploy found; cannot rollback automatically"
-          exit 1
+            echo "No previous successful deploy found; cannot rollback automatically"
+            exit 1
           fi
           echo "Found previous successful deploy id: $PREV_ID — triggering rollback deploy"
           RB_RESP=$(curl -s -X POST "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys" \
-          -H "Authorization: Bearer $RENDER_API_KEY" \
-          -H "Content-Type: application/json" \
-          -d '{"previous_deploy_id":"'$PREV_ID'"}')
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"previous_deploy_id":"'$PREV_ID'"}')
           echo "Rollback response: $RB_RESP"
           RB_ID=$(echo "$RB_RESP" | jq -r '.id // .deploy.id // empty')
           if [ -z "$RB_ID" ]; then
-          echo "Rollback trigger failed; manual intervention required"
-          exit 1
+            echo "Rollback trigger failed; manual intervention required"
+            exit 1
           fi
           echo "Rollback deploy triggered: $RB_ID"
 
