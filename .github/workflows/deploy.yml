@@ -133,7 +133,7 @@ jobs:
         if: ${{ steps.wait_deploy.outputs.deploy_status != 'succeeded' || steps.healthcheck.outputs.health_ok == 'false' }}
         run: |
           echo "Deployment failed or healthcheck failed — attempting rollback"
-          PREV_ID=$(curl -s "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys?limit=10" -H "Authorization: Bearer $RENDER_API_KEY" | jq -r --arg CUR "$DEPLOY_ID" '.[] | select(.deploy.id != $CUR and .deploy.status=="succeeded") | .deploy.id' | head -n1)
+          PREV_ID=$(curl -s "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys?limit=10" -H "Authorization: Bearer $RENDER_API_KEY" | jq -r --arg CUR "$DEPLOY_ID" '.[] | select(.deploy.id != $CUR and .deploy.status=="live") | .deploy.id' | head -n1)
           if [ -z "$PREV_ID" ]; then
             echo "No previous successful deploy found; cannot rollback automatically"
             exit 1
