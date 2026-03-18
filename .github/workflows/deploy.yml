@@ -134,9 +134,11 @@ jobs:
         run: |
           echo "Deployment failed or healthcheck failed — attempting rollback"
           echo "DEPLOY_ID = $DEPLOY_ID"
-          echo "Récupération de la liste des déploiements..."
-          DEPLOYS=$(curl -s -f "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys?limit=10" -H "Authorization: Bearer $RENDER_API_KEY") || { echo "curl failed"; exit 1; }
+          echo "Récupération de la liste des déploiements (limite 50)..."
+          DEPLOYS=$(curl -s -f "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys?limit=50" -H "Authorization: Bearer $RENDER_API_KEY") || { echo "curl failed"; exit 1; }
           echo "Réponse API reçue (premiers 200 caractères) : ${DEPLOYS:0:200}"
+          # Afficher tous les IDs et statuts pour déboguer
+          echo "$DEPLOYS" | jq -r '.[] | "\(.deploy.id // .id) : \(.deploy.status // .status)"'
           PREV_ID=$(echo "$DEPLOYS" | jq -r --arg CUR "$DEPLOY_ID" '
             .[] | 
             ( (.deploy.id // .id) as $id | 
