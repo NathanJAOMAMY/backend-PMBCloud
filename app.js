@@ -142,16 +142,19 @@ app.get('/', (req, res) => {
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  try {
-    res.status(200).json({
-      status: 'OK',
-      timestamp: new Date().toISOString(),
-      service: 'pmbcloud-backend'
-    });
-  } catch (error) {
-    console.error('Health check error:', error);
-    res.status(500).json({ error: 'Health check failed' });
-  }
+  // try {
+  //   res.status(200).json({
+  //     status: 'OK',
+  //     timestamp: new Date().toISOString(),
+  //     service: 'pmbcloud-backend'
+  //   });
+  // } catch (error) {
+  //   console.error('Health check error:', error);
+  //   res.status(500).json({ error: 'Health check failed' });
+  // }
+  
+  // Simulation d'une erreur pour tester le rollback
+  res.status(500).json({ error: 'Simulated failure for rollback test' });
 });
 
 // Routes
