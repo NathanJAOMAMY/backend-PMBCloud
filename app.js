@@ -152,7 +152,6 @@ app.get('/health', (req, res) => {
     console.error('Health check error:', error);
     res.status(500).json({ error: 'Health check failed' });
   }
-  
 });
 
 // Routes
