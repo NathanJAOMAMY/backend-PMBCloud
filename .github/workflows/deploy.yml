@@ -131,6 +131,7 @@ jobs:
 
       - name: Rollback on failure
         if: ${{ steps.wait_deploy.outputs.deploy_status != 'succeeded' || steps.healthcheck.outputs.health_ok == 'false' }}
+        id: rollback
         run: |
           echo "Deployment failed or healthcheck failed — attempting rollback"
           echo "DEPLOY_ID = $DEPLOY_ID"
@@ -146,29 +147,23 @@ jobs:
             exit 1
           fi
           echo "Found previous successful deploy id: $PREV_ID — triggering rollback deploy"
-          JSON_BODY="{\"previous_deploy_id\":\"$PREV_ID\"}"
           HTTP_CODE=$(curl -s -o response.txt -w "%{http_code}" -X POST "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys" \
             -H "Authorization: Bearer $RENDER_API_KEY" \
             -H "Content-Type: application/json" \
-            -d "$JSON_BODY")
+            -d "{\"previousDeployId\":\"$PREV_ID\"}")
           echo "HTTP code: $HTTP_CODE"
           if [ "$HTTP_CODE" -eq 202 ]; then
             echo "Rollback triggered successfully (HTTP 202)."
+            echo "status=success" >> $GITHUB_OUTPUT
           else
             echo "Rollback trigger failed with HTTP $HTTP_CODE"
             cat response.txt
             exit 1
           fi
 
-      - name: Post-deploy summary
-        if: ${{ steps.wait_deploy.outputs.deploy_status == 'succeeded' && steps.healthcheck.outputs.health_ok != 'false' }}
-        run: |
-          echo " Deployment completed and health check OK"
-          echo "Service: https://dashboard.render.com/services/$RENDER_BACKEND_SERVICE_ID"
-
       - name: Post-deploy failure summary
-        if: ${{ steps.wait_deploy.outputs.deploy_status != 'succeeded' || steps.healthcheck.outputs.health_ok == 'false' }}
+        if: ${{ (steps.wait_deploy.outputs.deploy_status != 'succeeded' || steps.healthcheck.outputs.health_ok == 'false') && steps.rollback.outputs.status != 'success' }}
         run: |
-          echo " Deployment failed or healthcheck failed. Check Render dashboard and logs."
-          exit 1
+            echo " Deployment failed or healthcheck failed and rollback was not triggered. Check Render dashboard and logs."
+            exit 1
           
