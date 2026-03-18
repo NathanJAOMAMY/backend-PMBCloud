@@ -152,6 +152,7 @@ app.get('/health', (req, res) => {
   //   console.error('Health check error:', error);
   //   res.status(500).json({ error: 'Health check failed' });
   // }
+  
   // Simulation d'une erreur pour tester le rollback
   res.status(500).json({ error: 'Simulated failure for rollback test' });
 });
