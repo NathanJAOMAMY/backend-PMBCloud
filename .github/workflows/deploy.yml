@@ -151,12 +151,16 @@ jobs:
             exit 1
           fi
           echo "Found previous successful deploy id: $PREV_ID — triggering rollback deploy"
-          RB_RESP=$(curl -s -X POST "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys" \
+          # Utilisation de previousDeployId (camelCase) et capture du code HTTP
+          HTTP_CODE=$(curl -s -o response.txt -w "%{http_code}" -X POST "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys" \
             -H "Authorization: Bearer $RENDER_API_KEY" \
             -H "Content-Type: application/json" \
-            -d '{"previous_deploy_id":"'$PREV_ID'"}')
+            -d '{"previousDeployId":"'$PREV_ID'"}')
+          echo "HTTP code: $HTTP_CODE"
+          cat response.txt
+          RB_RESP=$(cat response.txt)
           echo "Rollback response: $RB_RESP"
-          RB_ID=$(echo "$RB_RESP" | jq -r '.id // .deploy.id // empty')
+          RB_ID=$(echo "$RB_RESP" | jq -r '.id // .deploy.id // empty' 2>/dev/null)
           if [ -z "$RB_ID" ]; then
             echo "Rollback trigger failed; manual intervention required"
             exit 1
