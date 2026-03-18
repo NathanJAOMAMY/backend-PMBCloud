@@ -137,13 +137,14 @@ jobs:
           echo "Récupération de la liste des déploiements (limite 50)..."
           DEPLOYS=$(curl -s -f "https://api.render.com/v1/services/$RENDER_BACKEND_SERVICE_ID/deploys?limit=50" -H "Authorization: Bearer $RENDER_API_KEY") || { echo "curl failed"; exit 1; }
           echo "Réponse API reçue (premiers 200 caractères) : ${DEPLOYS:0:200}"
-          # Afficher tous les IDs et statuts pour déboguer
-          echo "$DEPLOYS" | jq -r '.[] | "\(.deploy.id // .id) : \(.deploy.status // .status)"'
+          # Afficher tous les IDs, statuts et commit IDs
+          echo "$DEPLOYS" | jq -r '.[] | "\(.deploy.id // .id) : \(.deploy.status // .status) : \(.deploy.commit.id // .commit.id)"'
+          # Chercher un déploiement réussi (live ou deactivated) différent du courant
           PREV_ID=$(echo "$DEPLOYS" | jq -r --arg CUR "$DEPLOY_ID" '
             .[] | 
             ( (.deploy.id // .id) as $id | 
               (.deploy.status // .status) as $status |
-              if $id != $CUR and $status == "live" then $id else empty end
+              if $id != $CUR and ($status == "live" or $status == "deactivated") then $id else empty end
             )' | head -n1)
           if [ -z "$PREV_ID" ]; then
             echo "No previous successful deploy found; cannot rollback automatically"
